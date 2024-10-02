@@ -52,36 +52,36 @@ export default function Home() {
 
   const handleImageUpload = async (result) => {
     console.log(result);
-    // const uploadedUrl = result?.info?.secure_url;
-    // setResource(uploadedUrl);
-    // localStorage.setItem("uploadedImage", uploadedUrl); // Save the image URL to local storage
+    const uploadedUrl = result?.info?.secure_url;
+    setResource(uploadedUrl);
+    localStorage.setItem("uploadedImage", uploadedUrl); // Save the image URL to local storage
 
-    // // Generate enhanced image immediately after upload
-    // const enhancedUrl = generateEnhancedImage(uploadedUrl); // Use the function to enhance the uploaded image
-    // setEnhancedImage(enhancedUrl);
+    // Generate enhanced image immediately after upload
+    const enhancedUrl = generateEnhancedImage(uploadedUrl); // Use the function to enhance the uploaded image
+    setEnhancedImage(enhancedUrl);
 
-    const uploadedFile = result?.info?.file;
+    // const uploadedFile = result?.info?.file;
 
-    // Compression options to reduce file size to around 110kb
-    const options = {
-      maxSizeMB: 0.11, // Target size of 110KB
-      maxWidthOrHeight: 1000, // Adjust the dimensions if needed
-      useWebWorker: true, // Use web workers to compress the image faster
-    };
+    // // Compression options to reduce file size to around 110kb
+    // const options = {
+    //   maxSizeMB: 0.11, // Target size of 110KB
+    //   maxWidthOrHeight: 1000, // Adjust the dimensions if needed
+    //   useWebWorker: true, // Use web workers to compress the image faster
+    // };
 
-    try {
-      const compressedFile = await imageCompression(uploadedFile, options); // Compress the image
+    // try {
+    //   const compressedFile = await imageCompression(uploadedFile, options); // Compress the image
 
-      const uploadedUrl = URL.createObjectURL(compressedFile); // Get a local URL for the compressed image
+    //   const uploadedUrl = URL.createObjectURL(compressedFile); // Get a local URL for the compressed image
 
-      setResource(uploadedUrl);
-      localStorage.setItem("uploadedImage", uploadedUrl);
+    //   setResource(uploadedUrl);
+    //   localStorage.setItem("uploadedImage", uploadedUrl);
 
-      const enhancedUrl = generateEnhancedImage(uploadedUrl);
-      setEnhancedImage(enhancedUrl);
-    } catch (error) {
-      console.error("Error compressing the image:", error);
-    }
+    //   const enhancedUrl = generateEnhancedImage(uploadedUrl);
+    //   setEnhancedImage(enhancedUrl);
+    // } catch (error) {
+    //   console.error("Error compressing the image:", error);
+    // }
   };
 
   const handleRemoveImage = async () => {
