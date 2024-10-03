@@ -7,7 +7,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const POST = async (req) => {
+export const POST = async (req, res) => {
   try {
     const { publicId } = await req.json(); // Parse JSON body from request
 

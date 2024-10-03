@@ -12,32 +12,54 @@ import {
   upscale,
   enhance,
 } from "@cloudinary/url-gen/actions/effect";
-import { improve } from "@cloudinary/url-gen/actions/adjust";
+import { Resize } from "@cloudinary/url-gen/actions/resize";
+import { fill } from "@cloudinary/url-gen/actions/resize";
 
 export default function Home() {
   const [resource, setResource] = useState(null);
   const [enhancedImage, setEnhancedImage] = useState(null);
 
-  // Function to generate enhanced image and convert it to .webp
-  const generateEnhancedImage = useCallback((imageUrl) => {
+  // Sequentially apply transformations one by one
+  const generateEnhancedImage = useCallback(async (imageUrl) => {
     const cld = new Cloudinary({
       cloud: {
         cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
       },
     });
 
-    // Get the public_id from the uploaded URL (remove the URL prefix for transformations)
     const publicId = imageUrl.split("/").pop().split(".")[0];
 
-    // Apply transformation: convert to .webp and enhance the image
-    const transformedImage = cld
-      .image(publicId) // Create Cloudinary image instance using public_id
-      .effect(upscale()) // Apply upscaling effect first
-      .effect(enhance()) // Apply enhancement
-      .effect(generativeRestore()); // Apply generative restore effect last
+    try {
+      
+      // Start with the original image
+      let transformedImage = cld.image(publicId);
 
-    return transformedImage.toURL(); // Generate and return the enhanced image URL
-  }, []); // Empty dependency array ensures the function remains stable across renders
+      transformedImage = transformedImage.resize(Resize.fit().width(320).height(180));
+      console.log(`Image resized to 320 X 180 px.`);
+
+      // Try to apply the 'upscale' effect
+      transformedImage = transformedImage.effect(upscale());
+      console.log("Upscale applied successfully.");
+
+      // Try to apply the 'enhance' effect
+      // transformedImage = transformedImage.effect(enhance());
+      // console.log("Enhance applied successfully.");
+
+      // Try to apply the 'generativeRestore' effect
+      transformedImage = transformedImage.effect(generativeRestore());
+      console.log("Generative Restore applied successfully.");
+
+      console.log(transformedImage.toURL());
+
+      // Return the final transformed image if all transformations succeed
+      return transformedImage.toURL();
+      
+    } catch (error) {
+      console.error("Transformation error:", error);
+      // return transformedImage.toURL();
+      return null; // Return null if there was a fatal error
+    }
+  }, []);
 
   // Load the uploaded image URL from local storage when the component mounts
   useEffect(() => {
@@ -45,56 +67,44 @@ export default function Home() {
 
     if (storedImage) {
       setResource(storedImage);
-      const enhancedUrl = generateEnhancedImage(storedImage); // Generate enhanced image using the stored image URL
-      setEnhancedImage(enhancedUrl);
+      generateEnhancedImage(storedImage).then((enhancedUrl) => {
+        setEnhancedImage(enhancedUrl);
+      });
     }
-  }, [generateEnhancedImage]); // Include `generateEnhancedImage` in dependency array
+  }, [generateEnhancedImage]);
 
   const handleImageUpload = async (result) => {
-    console.log(result);
-    const uploadedUrl = result?.info?.secure_url;
-    setResource(uploadedUrl);
-    localStorage.setItem("uploadedImage", uploadedUrl); // Save the image URL to local storage
+    if (!result) {
+      console.log("upload failed");
+      return;
+    }
+      const uploadedUrl = result?.info?.secure_url;
+      
+      setResource(uploadedUrl);
+      localStorage.setItem("uploadedImage", uploadedUrl);
 
-    // Generate enhanced image immediately after upload
-    const enhancedUrl = generateEnhancedImage(uploadedUrl); // Use the function to enhance the uploaded image
-    setEnhancedImage(enhancedUrl);
-
-    // const uploadedFile = result?.info?.file;
-
-    // // Compression options to reduce file size to around 110kb
-    // const options = {
-    //   maxSizeMB: 0.11, // Target size of 110KB
-    //   maxWidthOrHeight: 1000, // Adjust the dimensions if needed
-    //   useWebWorker: true, // Use web workers to compress the image faster
-    // };
-
-    // try {
-    //   const compressedFile = await imageCompression(uploadedFile, options); // Compress the image
-
-    //   const uploadedUrl = URL.createObjectURL(compressedFile); // Get a local URL for the compressed image
-
-    //   setResource(uploadedUrl);
-    //   localStorage.setItem("uploadedImage", uploadedUrl);
-
-    //   const enhancedUrl = generateEnhancedImage(uploadedUrl);
-    //   setEnhancedImage(enhancedUrl);
-    // } catch (error) {
-    //   console.error("Error compressing the image:", error);
-    // }
+      // Generate enhanced image immediately after upload
+      generateEnhancedImage(uploadedUrl).then((enhancedUrl) => {
+        setEnhancedImage(enhancedUrl);
+      });
   };
 
   const handleRemoveImage = async () => {
-    const publicId = resource.split("/").pop().split(".")[0]; // Extract public_id
+    const publicId = resource.split("/").pop().split(".")[0];
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "https://localhost:3000"}/api/delete-image`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ publicId }), // Pass publicId to the API
-      });
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+        }/api/delete-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ publicId }),
+        }
+      );
 
       if (!response.ok) {
         console.error(
@@ -104,12 +114,12 @@ export default function Home() {
         return;
       }
 
-      const data = await response.json(); // Parse JSON response
+      const data = await response.json();
 
       if (data.success) {
         setResource(null);
         setEnhancedImage(null);
-        localStorage.removeItem("uploadedImage"); // Clear from local storage
+        localStorage.removeItem("uploadedImage");
         console.log("Image removed from Cloudinary");
       } else {
         console.error("Failed to remove image from Cloudinary:", data.error);
@@ -121,9 +131,10 @@ export default function Home() {
 
   return (
     <main className="min-h-screen w-full flex flex-col justify-start items-center gap-20 pt-20">
-      <h1 className="text-6xl font-bold">Image Upload & Compare</h1>
+      <h1 className="text-6xl font-bold max-lg:text-xl">
+        Image Upload & Compare
+      </h1>
 
-      {/* Only show the upload button if no image has been uploaded yet */}
       {!resource && (
         <CldUploadWidget
           uploadPreset="testImage"
@@ -140,7 +151,6 @@ export default function Home() {
         </CldUploadWidget>
       )}
 
-      {/* Display the uploaded image and the comparison slider */}
       {resource && enhancedImage && (
         <div className="flex flex-col items-center gap-4">
           <h2 className="text-3xl font-medium">Compare Images</h2>
@@ -148,23 +158,22 @@ export default function Home() {
             <ReactCompareSlider
               itemOne={
                 <ReactCompareSliderImage
-                  src={resource} // Original uploaded image
+                  src={resource}
                   alt="Original Image"
                   style={{ objectFit: "cover" }}
                 />
               }
               itemTwo={
                 <ReactCompareSliderImage
-                  src={enhancedImage} // Enhanced image (in .webp format)
+                  src={enhancedImage ? enhancedImage : resource}
                   alt="Enhanced Image"
                   style={{ objectFit: "cover" }}
                 />
               }
-              style={{ width: "100%", height: "100%" }} // Makes the slider take the full width and height of the wrapper
+              style={{ width: "100%", height: "100%" }}
             />
           </div>
 
-          {/* Option to remove the image and upload again */}
           <button
             onClick={handleRemoveImage}
             className="border bg-red-500 text-white font-medium px-4 py-2 rounded-lg mt-4"
