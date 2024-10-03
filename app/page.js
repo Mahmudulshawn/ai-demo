@@ -154,7 +154,7 @@ export default function Home() {
       {resource && enhancedImage && (
         <div className="flex flex-col items-center gap-4">
           <h2 className="text-3xl font-medium">Compare Images</h2>
-          <div className="w-[600px] h-[600px] rounded-lg overflow-hidden">
+          <div className="w-[600px] h-[600px] rounded-lg overflow-hidden max-md:w-[350px] max-md:h-[350px] ">
             <ReactCompareSlider
               itemOne={
                 <ReactCompareSliderImage
