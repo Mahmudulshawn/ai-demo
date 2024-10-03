@@ -42,8 +42,8 @@ export default function Home() {
       console.log("Upscale applied successfully.");
 
       // Try to apply the 'enhance' effect
-      // transformedImage = transformedImage.effect(enhance());
-      // console.log("Enhance applied successfully.");
+      transformedImage = transformedImage.effect(enhance());
+      console.log("Enhance applied successfully.");
 
       // Try to apply the 'generativeRestore' effect
       transformedImage = transformedImage.effect(generativeRestore());
