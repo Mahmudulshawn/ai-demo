@@ -12,7 +12,6 @@ import {
   enhance,
 } from "@cloudinary/url-gen/actions/effect";
 import { Resize } from "@cloudinary/url-gen/actions/resize";
-import { sharpen } from "@cloudinary/url-gen/actions/adjust";
 import useDownloader from "react-use-downloader";
 
 export default function Home() {
