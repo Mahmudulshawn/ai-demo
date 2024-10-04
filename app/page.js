@@ -150,7 +150,7 @@ export default function Home() {
           {({ open }) => (
             <button
               onClick={() => open()}
-              className="border bg-white text-black font-medium px-4 py-2 rounded-lg"
+              className="border bg-white text-black font-medium px-4 py-2 rounded-lg max-md:text-sm"
             >
               Upload an Image
             </button>
