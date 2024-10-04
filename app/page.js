@@ -6,18 +6,20 @@ import {
   ReactCompareSliderImage,
 } from "react-compare-slider";
 import { Cloudinary } from "@cloudinary/url-gen";
-import { format } from "@cloudinary/url-gen/actions/delivery";
 import {
   generativeRestore,
   upscale,
   enhance,
 } from "@cloudinary/url-gen/actions/effect";
 import { Resize } from "@cloudinary/url-gen/actions/resize";
-import { fill } from "@cloudinary/url-gen/actions/resize";
+import { sharpen } from "@cloudinary/url-gen/actions/adjust";
+import useDownloader from "react-use-downloader";
 
 export default function Home() {
   const [resource, setResource] = useState(null);
   const [enhancedImage, setEnhancedImage] = useState(null);
+
+  const {download} = useDownloader();
 
   // Sequentially apply transformations one by one
   const generateEnhancedImage = useCallback(async (imageUrl) => {
@@ -30,11 +32,12 @@ export default function Home() {
     const publicId = imageUrl.split("/").pop().split(".")[0];
 
     try {
-      
       // Start with the original image
       let transformedImage = cld.image(publicId);
 
-      transformedImage = transformedImage.resize(Resize.fit().width(320).height(180));
+      transformedImage = transformedImage.resize(
+        Resize.fit().width(320).height(180)
+      );
       console.log(`Image resized to 320 X 180 px.`);
 
       // Try to apply the 'upscale' effect
@@ -49,11 +52,11 @@ export default function Home() {
       transformedImage = transformedImage.effect(generativeRestore());
       console.log("Generative Restore applied successfully.");
 
-      console.log(transformedImage.toURL());
-
-      // Return the final transformed image if all transformations succeed
-      return transformedImage.toURL();
+      // Try to apply the 'sharpen' effect
+      // transformedImage = transformedImage.effect(sharpen(1500));
+      // console.log("Sharpen applied successfully.");
       
+      return transformedImage.toURL(); // Return the transformed image URL (or null if there was a fatal error)
     } catch (error) {
       console.error("Transformation error:", error);
       // return transformedImage.toURL();
@@ -78,15 +81,15 @@ export default function Home() {
       console.log("upload failed");
       return;
     }
-      const uploadedUrl = result?.info?.secure_url;
-      
-      setResource(uploadedUrl);
-      localStorage.setItem("uploadedImage", uploadedUrl);
+    const uploadedUrl = result?.info?.secure_url;
 
-      // Generate enhanced image immediately after upload
-      generateEnhancedImage(uploadedUrl).then((enhancedUrl) => {
-        setEnhancedImage(enhancedUrl);
-      });
+    setResource(uploadedUrl);
+    localStorage.setItem("uploadedImage", uploadedUrl);
+
+    // Generate enhanced image immediately after upload
+    generateEnhancedImage(uploadedUrl).then((enhancedUrl) => {
+      setEnhancedImage(enhancedUrl);
+    });
   };
 
   const handleRemoveImage = async () => {
@@ -94,9 +97,7 @@ export default function Home() {
 
     try {
       const response = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-        }/api/delete-image`,
+        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/delete-image`,
         {
           method: "POST",
           headers: {
@@ -107,10 +108,7 @@ export default function Home() {
       );
 
       if (!response.ok) {
-        console.error(
-          "Failed to remove image from Cloudinary:",
-          response.status
-        );
+        console.error("Failed to remove images from Cloudinary:", response.status);
         return;
       }
 
@@ -120,20 +118,29 @@ export default function Home() {
         setResource(null);
         setEnhancedImage(null);
         localStorage.removeItem("uploadedImage");
-        console.log("Image removed from Cloudinary");
+        console.log("Images removed from Cloudinary");
       } else {
-        console.error("Failed to remove image from Cloudinary:", data.error);
+        console.error("Failed to remove images from Cloudinary:", data.error);
       }
     } catch (error) {
       console.error("Error:", error);
     }
   };
+  
+  const downloadEnhancedImage = () => {
+    if (enhancedImage) {
+      download(enhancedImage, "ImageFlux-enhanced-image.jpg");
+    } else {
+      console.log("Enhanced image not found");
+    }
+  };
 
   return (
-    <main className="min-h-screen w-full flex flex-col justify-start items-center gap-20 pt-20">
-      <h1 className="text-6xl font-bold max-lg:text-xl">
-        Image Upload & Compare
-      </h1>
+    <main className="min-h-screen w-full flex flex-col justify-start items-center gap-20 pt-20 px-8">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-6xl font-bold max-md:text-xl text-center">ImageFlux Image Upload & Compare</h1>
+        <p className="max-md:text-sm text-xl text-center"><span className="bg-red-500 text-white">Note:</span> It works the best with single subject image like a portrait and specially a small sized and grainy image.</p>
+      </div>
 
       {!resource && (
         <CldUploadWidget
@@ -154,7 +161,7 @@ export default function Home() {
       {resource && enhancedImage && (
         <div className="flex flex-col items-center gap-4">
           <h2 className="text-3xl font-medium">Compare Images</h2>
-          <div className="w-[600px] h-[600px] rounded-lg overflow-hidden max-md:w-[350px] max-md:h-[350px] ">
+          <div className="w-[600px] h-[600px] rounded-lg overflow-hidden max-md:w-[300px] max-md:h-[300px] ">
             <ReactCompareSlider
               itemOne={
                 <ReactCompareSliderImage
@@ -174,12 +181,21 @@ export default function Home() {
             />
           </div>
 
-          <button
-            onClick={handleRemoveImage}
-            className="border bg-red-500 text-white font-medium px-4 py-2 rounded-lg mt-4"
-          >
-            Remove Image
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={handleRemoveImage}
+              className=" bg-red-500 hover:bg-red-500/50 text-white font-medium px-2 py-2 rounded-lg mt-4 max-md:text-sm"
+            >
+              Remove Image
+            </button>
+
+            <button
+              onClick={downloadEnhancedImage}
+              className=" bg-blue-500 hover:bg-blue-500/50 text-white font-medium px-2 py-2 rounded-lg mt-4 max-md:text-sm"
+            >
+              Download Enhanced Image
+            </button>
+          </div>
         </div>
       )}
     </main>
